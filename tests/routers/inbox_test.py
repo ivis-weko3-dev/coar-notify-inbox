@@ -26,10 +26,12 @@ def test_read_inbox(mock_get_notifications, client: TestClient):
     }
 
 
+@patch("routers.inbox.get_notification")
 @patch("routers.inbox.create_notification")
-def test_add_notification(mock_create_notification,
+def test_add_notification(mock_create_notification, mock_get_notification,
                           valid_notification_payload: dict,
                           client: TestClient):
+    mock_get_notification.return_value = None
     mock_create_notification.return_value = valid_notification_payload["id"]
 
     response = client.post("/inbox/", json=valid_notification_payload)
