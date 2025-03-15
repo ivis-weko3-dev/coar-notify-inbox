@@ -57,6 +57,12 @@ async def add_notification(request: Request, background_tasks: BackgroundTasks,
                            payload: dict = Body(...)):
     notification = Notification(**payload)
 
+    if await get_notification(notification.id) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="ID conflict: notification with this ID already exists.",
+        )
+
     notification_id = await create_notification(notification)
 
     if notification_id and get_settings().on_receive_notification_webhook_url:
