@@ -18,13 +18,14 @@ async def get_users_collection():
     return await get_collection(USERS_COLLECTION_NAME)
 
 
-async def set_subscription(subscription: Subscription) -> Subscription:
+async def set_subscription(subscription: Subscription):
     collection = await get_subscriptions_collection()
-    await collection.update_one(
+    result = await collection.update_one(
         {"endpoint": subscription.endpoint},
         {"$set": subscription.model_dump(by_alias=True)},
         upsert=True
     )
+    return result.upserted_id
 
 
 async def get_subscriptions(target: str):
@@ -39,11 +40,8 @@ async def get_subscriptions(target: str):
 
 async def delete_subscription(endpoint: str) -> Subscription | None:
     collection = await get_subscriptions_collection()
-    subscription = await collection.find_one({"endpoint": endpoint}, {"_id": 0})
-    if subscription:
-        await collection.delete_one({"endpoint": endpoint})
-        return Subscription(**subscription)
-    return None
+    result = await collection.delete_one({"endpoint": endpoint})
+    return result.deleted_count
 
 
 async def delete_subscriptions(endpoints: list[str]) -> None:

@@ -65,9 +65,9 @@ async def test_get_subscriptions(mock_get_subscriptions_collection):
 async def test_delete_subscription(mock_get_subscriptions_collection):
     mock_collection = AsyncMock()
     mock_get_subscriptions_collection.return_value = mock_collection
-    mock_collection.find_one.return_value = {"endpoint": "test_endpoint", "target": "test_target"}
-    subscription = await delete_subscription("test_endpoint")
-    assert subscription.endpoint == "test_endpoint"
+    mock_collection.delete_one.return_value.deleted_count = 1
+    deleted_count = await delete_subscription("test_endpoint")
+    assert deleted_count == 1
     mock_collection.delete_one.assert_called_once_with({"endpoint": "test_endpoint"})
 
 

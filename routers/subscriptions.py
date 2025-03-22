@@ -5,9 +5,10 @@ from config import get_settings
 from db.subscriptions import set_subscription, delete_subscription
 from utils import logger
 
+from .inbox import router as inbox_router
+
 
 router = APIRouter(
-    prefix="/inbox",
     tags=["subscription"],
 )
 
@@ -23,32 +24,37 @@ class UnsubscribeRequest(BaseModel):
     endpoint: str
 
 
-@router.get("/subscription/vapid-public-key")
+@inbox_router.get("/subscription/vapid-public-key")
 async def get_vapid_public_key():
     return Response(content=get_settings().vapid_public_key)
 
 
 @router.post("/subscribe")
 async def subscribe(subscription: SubscribeRequest):
+    if await set_subscription(subscription):
+        logger.info(
+            f"Subscribing: {subscription.target}, "
+            f"endpoint: {subscription.endpoint[:24]}..."
+        )
+        return Response(status_code=201)
     logger.info(
-        f"Subscribing: {subscription.target}, "
+        f"Aleady subscribed: {subscription.target}, "
         f"endpoint: {subscription.endpoint[:24]}..."
     )
-    await set_subscription(subscription)
-    return Response(status_code=201)
+
+    return Response(status_code=200)
 
 
 @router.post("/unsubscribe")
 async def unsubscribe(r: UnsubscribeRequest):
-    subscription = await delete_subscription(r.endpoint)
-    if subscription is None:
+    count = await delete_subscription(r.endpoint)
+    if count == 0:
         logger.warning(f"Subscription not found: {r.endpoint[:24]}...")
         raise HTTPException(
             status_code=404,
             detail="Subscription not found",
             )
     logger.info(
-        f"Unsubscribing: {subscription.target}"
-        f"endpoint: {subscription.endpoint[:24]}..."
+        f"Unsubscribing: {r.endpoint[:24]}..."
     )
-    return Response(status_code=204)
+    return Response(status_code=200)
