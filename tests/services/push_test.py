@@ -68,7 +68,7 @@ def test_send_webpush_success(mock_delete_subscriptions, mock_send, mock_get_use
     mock_get_subscriptions.assert_called_once_with(notification.target.id)
     mock_get_user.assert_called_once_with(notification.target.id)
     mock_send.assert_called_once()
-    mock_delete_subscriptions.assert_called_once_with([])
+    mock_delete_subscriptions.assert_not_called()
 
 @patch("services.push.get_subscriptions")
 @patch("services.push.get_user")

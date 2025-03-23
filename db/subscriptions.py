@@ -1,9 +1,9 @@
 from db import get_collection
-from db.models import Subscription, User
+from db.models import Subscription, UserProfile
 from utils import logger
 
 SUBSCRIPTIONS_COLLECTION_NAME = "subscriptions"
-USERS_COLLECTION_NAME = "users"
+USERS_COLLECTION_NAME = "userprofiles"
 
 
 class FailedToFindUser(Exception):
@@ -50,16 +50,17 @@ async def delete_subscriptions(endpoints: list[str]) -> None:
     logger.info(f"Deleted {len(endpoints)} subscriptions")
 
 
-async def get_user(uri: str) -> User:
+async def get_user(uri: str) -> UserProfile:
     collection = await get_users_collection()
     user = await collection.find_one({"uri": uri}, {"_id": 0})
     return user
 
 
-async def set_user(user: User) -> None:
+async def set_user(userprofile: UserProfile) -> None:
     collection = await get_users_collection()
-    await collection.update_one(
-        {"uri": user.uri},
-        {"$set": user.model_dump(by_alias=True)},
+    result = await collection.update_one(
+        {"uri": userprofile.uri},
+        {"$set": userprofile.model_dump(by_alias=True)},
         upsert=True
     )
+    return result.upserted_id

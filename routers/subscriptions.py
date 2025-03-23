@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from config import get_settings
-from db.subscriptions import set_subscription, delete_subscription
+from db.subscriptions import set_subscription, delete_subscription, set_user
 from utils import logger
 
 from .inbox import router as inbox_router
@@ -22,6 +22,13 @@ class SubscribeRequest(BaseModel):
 
 class UnsubscribeRequest(BaseModel):
     endpoint: str
+
+
+class UserProfileRequest(BaseModel):
+    uri: str
+    displayname: str | None = None
+    language: str | None = None
+    timezone: str | None = None
 
 
 @inbox_router.get("/subscription/vapid-public-key")
@@ -57,4 +64,12 @@ async def unsubscribe(r: UnsubscribeRequest):
     logger.info(
         f"Unsubscribing: {r.endpoint[:24]}..."
     )
+    return Response(status_code=200)
+
+
+@router.post("/userprofile")
+async def user_profile(user: UserProfileRequest):
+    if await set_user(user):
+        logger.info(f"Setting user profile: {user.uri}")
+        return Response(status_code=201)
     return Response(status_code=200)

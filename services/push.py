@@ -3,7 +3,7 @@ import traceback
 from pywebpush import webpush, WebPushException
 
 from config import get_settings
-from db.models import Subscription, Notification, User
+from db.models import Subscription, Notification, UserProfile
 from db.subscriptions import delete_subscriptions, get_subscriptions, get_user
 
 
@@ -46,10 +46,10 @@ async def send_webpush(notification: Notification):
             if ex.response is not None and ex.response.status_code in [404, 410]:
                 not_sent.append(subscription.endpoint)
 
-    await delete_subscriptions(not_sent) if not_sent else None
+    return await delete_subscriptions(not_sent) if not_sent else None
 
 
-def make_contents(notification: Notification, user: User) -> tuple[str, str, str]:
+def make_contents(notification: Notification, user: UserProfile) -> tuple[str, str, str]:
     params = {
         "updated": notification.updated,
         "target_uri": notification.target.id,
@@ -58,7 +58,7 @@ def make_contents(notification: Notification, user: User) -> tuple[str, str, str
         "context_uri": notification.context.id,
         "actor_uri": notification.actor.id,
         "actor_name": notification.actor.name,
-        "user_name": user.displayname if user is not None else "Unknown",
+        "user_name": user.displayname or "Unknown",
     }
     activity_type = notification.type
 

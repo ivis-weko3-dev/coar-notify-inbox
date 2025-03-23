@@ -11,7 +11,7 @@ from db.subscriptions import (
     set_user,
     FailedToFindUser,
 )
-from db.models import Subscription, User
+from db.models import Subscription, UserProfile
 
 
 @pytest.mark.asyncio
@@ -28,7 +28,7 @@ async def test_get_subscriptions_collection(mock_get_collection):
 async def test_get_users_collection(mock_get_collection):
     mock_get_collection.return_value = AsyncMock()
     collection = await get_users_collection()
-    mock_get_collection.assert_called_once_with("users")
+    mock_get_collection.assert_called_once_with("userprofiles")
     assert collection is not None
 
 
@@ -95,7 +95,7 @@ async def test_get_user(mock_get_users_collection):
 async def test_set_user(mock_get_users_collection):
     mock_collection = AsyncMock()
     mock_get_users_collection.return_value = mock_collection
-    user = User(uri="test_uri", displayname="test_user")
+    user = UserProfile(uri="test_uri", displayname="test_user")
     await set_user(user)
     mock_collection.update_one.assert_called_once_with(
         {"uri": user.uri},
