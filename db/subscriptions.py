@@ -38,22 +38,23 @@ async def get_subscriptions(target: str):
     return [Subscription(**subscription) for subscription in subscriptions]
 
 
-async def delete_subscription(endpoint: str) -> Subscription | None:
+async def delete_subscription(endpoint: str) -> int:
     collection = await get_subscriptions_collection()
     result = await collection.delete_one({"endpoint": endpoint})
     return result.deleted_count
 
 
-async def delete_subscriptions(endpoints: list[str]) -> None:
+async def delete_subscriptions(endpoints: list[str]):
     collection = await get_subscriptions_collection()
     await collection.delete_many({"endpoint": {"$in": endpoints}})
     logger.info(f"Deleted {len(endpoints)} subscriptions")
 
 
-async def get_user(uri: str) -> UserProfile:
+async def get_user(uri: str):
     collection = await get_users_collection()
     user = await collection.find_one({"uri": uri}, {"_id": 0})
-    return user
+
+    return UserProfile(**user) if user is not None else None
 
 
 async def set_user(userprofile: UserProfile) -> None:

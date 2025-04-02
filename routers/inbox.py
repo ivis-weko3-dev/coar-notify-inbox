@@ -4,6 +4,7 @@ from fastapi import (
     BackgroundTasks,
     Body,
     HTTPException,
+    Query,
     Request,
     Response,
 )
@@ -38,9 +39,9 @@ async def read_inbox_options():
 
 @router.get("/", include_in_schema=False)
 @router.get("")
-async def read_inbox(request: Request) -> JSONResponse:
+async def read_inbox(request: Request, target: str = Query(None)) -> JSONResponse:
     inbox_url = get_inbox_url(request)
-    notifications = await get_notifications()
+    notifications = await get_notifications(target=target)
 
     return JSONResponse(
         headers={"content-type": "application/ld+json"},
@@ -55,9 +56,7 @@ async def read_inbox(request: Request) -> JSONResponse:
 @router.post("/", include_in_schema=False)
 @router.post("")
 async def add_notification(request: Request, background_tasks: BackgroundTasks,
-                           payload: dict = Body(...)):
-    notification = Notification(**payload)
-
+                           notification: Notification = Body(...)):
     if await get_notification(notification.id) is not None:
         raise HTTPException(
             status_code=409,

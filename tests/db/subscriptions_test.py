@@ -87,7 +87,7 @@ async def test_get_user(mock_get_users_collection):
     mock_get_users_collection.return_value = mock_collection
     mock_collection.find_one.return_value = {"uri": "test_uri", "name": "test_user"}
     user = await get_user("test_uri")
-    assert user["uri"] == "test_uri"
+    assert user.uri == "test_uri"
 
 
 @pytest.mark.asyncio
