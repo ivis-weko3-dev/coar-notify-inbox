@@ -1,17 +1,19 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from db.subscriptions import (
+    get_push_templates_collection,
     get_subscriptions_collection,
+    get_template,
     get_users_collection,
     set_subscription,
     get_subscriptions,
     delete_subscription,
     delete_subscriptions,
     get_user,
+    set_template,
     set_user,
-    FailedToFindUser,
 )
-from db.models import Subscription, UserProfile
+from db.models import PushTemplate, Subscription, UserProfile
 
 
 @pytest.mark.asyncio
@@ -29,6 +31,15 @@ async def test_get_users_collection(mock_get_collection):
     mock_get_collection.return_value = AsyncMock()
     collection = await get_users_collection()
     mock_get_collection.assert_called_once_with("userprofiles")
+    assert collection is not None
+
+
+@pytest.mark.asyncio
+@patch("db.subscriptions.get_collection")
+async def test_get_push_templates_collection(mock_get_collection):
+    mock_get_collection.return_value = AsyncMock()
+    collection = await get_push_templates_collection()
+    mock_get_collection.assert_called_once_with("push_templates")
     assert collection is not None
 
 
@@ -101,4 +112,31 @@ async def test_set_user(mock_get_users_collection):
         {"uri": user.uri},
         {"$set": user.model_dump(by_alias=True)},
         upsert=True,
+    )
+
+@pytest.mark.asyncio
+@patch("db.subscriptions.get_push_templates_collection")
+async def test_set_template(mock_get_push_templates_collection, valid_push_template_payload):
+    mock_collection = AsyncMock()
+    mock_get_push_templates_collection.return_value = mock_collection
+    template = PushTemplate(**valid_push_template_payload)
+    await set_template(template)
+    mock_collection.update_one.assert_called_once_with(
+        {"type": template.type, "language": template.language},
+        {"$set": template.model_dump(by_alias=True)},
+        upsert=True,
+    )
+
+@pytest.mark.asyncio
+@patch("db.subscriptions.get_push_templates_collection")
+async def test_get_template(mock_get_push_templates_collection, valid_push_template_payload):
+    mock_collection = AsyncMock()
+    mock_get_push_templates_collection.return_value = mock_collection
+    mock_collection.find_one.return_value = valid_push_template_payload
+    expected_template = PushTemplate(**valid_push_template_payload)
+    template = await get_template(expected_template.type, "en")
+    assert template == expected_template
+    mock_collection.find_one.assert_called_once_with(
+        {"type": expected_template.type, "language": "en"},
+        {"_id": 0}
     )

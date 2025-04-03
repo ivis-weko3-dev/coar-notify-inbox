@@ -91,4 +91,4 @@ async def read_notification(notification_id: str):
             content=json.dumps(notification, default=str),
         )
 
-    raise HTTPException(status_code=404, detail="Notification not found")
+    raise HTTPException(status_code=404, detail="Notification not found.")

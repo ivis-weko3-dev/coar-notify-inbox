@@ -4,7 +4,10 @@ from pywebpush import webpush, WebPushException
 
 from config import get_settings
 from db.models import Subscription, Notification, UserProfile
-from db.subscriptions import delete_subscriptions, get_subscriptions, get_user
+from db.subscriptions import (
+    delete_subscriptions, get_subscriptions, get_template, get_user
+)
+from utils import dt2idt
 
 
 def send(subscription: Subscription, payload: dict):
@@ -19,9 +22,27 @@ def send(subscription: Subscription, payload: dict):
 async def send_webpush(notification: Notification):
     target_uri = notification.target.id
     subscriptions = await get_subscriptions(target_uri)
-    user = await get_user(target_uri)
 
-    title, body, url = make_contents(notification, user)
+    if not subscriptions:
+        return None
+
+    user = await get_user(target_uri)
+    payload = await make_payload(notification, user)
+
+    not_sent = []
+    for subscription in subscriptions:
+        try:
+            send(subscription, payload)
+        except WebPushException as ex:
+            traceback.print_exc()
+            if ex.response is not None and ex.response.status_code in [404, 410]:
+                not_sent.append(subscription.endpoint)
+
+    return await delete_subscriptions(not_sent) if not_sent else None
+
+
+async def make_payload(notification: Notification, user: UserProfile) -> dict:
+    title, body, url = await make_contents(notification, user)
 
     payload = {
         "title": title,
@@ -36,57 +57,37 @@ async def send_webpush(notification: Notification):
             }
         }
     }
-
-    not_sent = []
-    for subscription in subscriptions:
-        try:
-            send(subscription, payload)
-        except WebPushException as ex:
-            traceback.print_exc()
-            if ex.response is not None and ex.response.status_code in [404, 410]:
-                not_sent.append(subscription.endpoint)
-
-    return await delete_subscriptions(not_sent) if not_sent else None
+    return payload
 
 
-def make_contents(notification: Notification, user: UserProfile) -> tuple[str, str, str]:
-    params = {
-        "updated": notification.updated,
+async def make_contents(notification: Notification, user: UserProfile) -> tuple[str, str, str]:
+    params = make_params(notification, user)
+
+    title, body, url = "", "", ""
+    template = await get_template(notification.type, user.language)
+
+    if not template:
+        template = await get_template(notification.type, "en")
+
+    if not template:
+        return title, body, url
+
+    title = template.title.replace("{{ ", "{").replace(" }}", "}").format(**params)
+    body = template.body.replace("{{ ", "{").replace(" }}", "}").format(**params)
+    url = params["context_uri"] or params["object_uri"]
+
+    return title, body, url
+
+
+def make_params(notification: Notification, user: UserProfile):
+    params:  dict[str, str | None] = {
+        "timestamp": dt2idt(notification.updated).rfc3339format(),
         "target_uri": notification.target.id,
         "object_uri": notification.object.id,
         "object_name": notification.object.name,
-        "context_uri": notification.context.id,
-        "actor_uri": notification.actor.id,
-        "actor_name": notification.actor.name,
-        "user_name": user.displayname or "Unknown",
+        "context_uri": notification.context.id if notification.context else None,
+        "actor_uri": notification.actor.id if notification.actor else None,
+        "actor_name": notification.actor.name if notification.actor else "Unknown",
+        "target_name": user.displayname or "Unknown",
     }
-    activity_type = notification.type
-
-    title, body, url = "", "", ""
-
-    if activity_type == ["Announce", "coar-notify:IngestAction"]:
-        title = "Your item has been registered"
-        body = "\"{object_name}\" has been registered by {actor_name}".format(
-            **params
-        )
-        url = params["object_uri"]
-    elif activity_type == ["Offer", "coar-notify:EndorsementAction"]:
-        title = "You have received a request."
-        body = "{object_name} has been requested by {actor_name}".format(
-            **params
-        )
-        url = params["context_uri"]
-    elif activity_type == ["Announce", "coar-notify:EndorsementAction"]:
-        title = "Your item has been approved"
-        body = "{object_name} has been approved by {actor_name}".format(
-            **params
-        )
-        url = params["object_uri"]
-    elif activity_type == ["Reject"]:
-        title = "Your item has been rejected"
-        body = "{object_name} has been rejected by {actor_name}".format(
-            **params
-        )
-        url = params["context_uri"]
-
-    return title, body, url
+    return params

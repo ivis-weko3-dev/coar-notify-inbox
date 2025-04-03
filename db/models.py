@@ -78,3 +78,18 @@ class UserProfile(BaseModel):
     language: str = "en"
     timezone: str = "GMT"
     disabled: bool = False
+
+
+class PushTemplate(BaseModel):
+    name: str
+    description: str
+    type: list[str] | str
+    language: str
+    title: str
+    body: str
+
+    model_config = ConfigDict(
+        use_alias=True,
+        populate_by_name=True,
+        validate_assignment=True
+    )

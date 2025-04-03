@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from config import get_settings
-from db.subscriptions import set_subscription, delete_subscription, set_user
+from db.models import PushTemplate
+from db.subscriptions import set_subscription, delete_subscription, set_template, set_user
 from utils import logger
 
 from .inbox import router as inbox_router
+from .middleware import admin_only
 
 
 router = APIRouter(
@@ -71,5 +73,15 @@ async def unsubscribe(r: UnsubscribeRequest):
 async def user_profile(user: UserProfileRequest):
     if await set_user(user):
         logger.info(f"Setting user profile: {user.uri}")
+        return Response(status_code=201)
+    return Response(status_code=200)
+
+
+@router.post("/push-template")
+@admin_only
+# pylint: disable=unused-argument
+async def update_template(request: Request, template: PushTemplate):
+    if await set_template(template):
+        logger.info(f"Setting template: {template.name}, {template.language}")
         return Response(status_code=201)
     return Response(status_code=200)

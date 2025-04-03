@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from db.models import PushTemplate
 from routers.subscriptions import SubscribeRequest, UnsubscribeRequest, UserProfileRequest
 
 
@@ -78,3 +79,23 @@ def test_user_profile_already_exists(mock_set_user, client: TestClient, valid_us
 
     assert response.status_code == 200
     mock_set_user.assert_called_once_with(UserProfileRequest(**valid_userprofile_payload))
+
+
+@patch("routers.subscriptions.set_template")
+def test_update_push_template(mock_set_template, admin_client: TestClient, valid_push_template_payload: dict):
+    mock_set_template.return_value = True
+
+    response = admin_client.post("/push-template", json=valid_push_template_payload)
+
+    assert response.status_code == 201
+    mock_set_template.assert_called_once_with(PushTemplate(**valid_push_template_payload))
+
+
+@patch("routers.subscriptions.set_template")
+def test_update_push_template_already_exists(mock_set_template, admin_client: TestClient, valid_push_template_payload: dict):
+    mock_set_template.return_value = False
+
+    response = admin_client.post("/push-template", json=valid_push_template_payload)
+
+    assert response.status_code == 200
+    mock_set_template.assert_called_once_with(PushTemplate(**valid_push_template_payload))

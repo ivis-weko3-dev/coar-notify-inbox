@@ -183,3 +183,15 @@ def valid_userprofile_payload():
         "language": "en",
         "timezone": "GMT",
     }
+
+
+@pytest.fixture
+def valid_push_template_payload():
+    return {
+        "name": "Test Template",
+        "description": "Test Description",
+        "type": [""],
+        "language": "en",
+        "title": "Test Title",
+        "body": "Test Body: {{ object_uri }}",
+    }
